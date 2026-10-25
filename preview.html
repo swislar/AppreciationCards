@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="src/styles.css">
+<style>
+  body{background:#EDE6DB;padding:22px;margin:0}
+  .wrap{display:flex;flex-direction:column;gap:24px}
+  .row{display:flex;gap:20px;align-items:flex-start}
+  .pair{display:flex;gap:12px}
+  .lab{font:600 11px Inter;letter-spacing:.12em;text-transform:uppercase;color:#8A8177;margin-bottom:6px}
+  .card{box-shadow:0 10px 30px rgba(40,30,20,.16)}
+  .themes{display:grid;grid-template-columns:repeat(2,auto);gap:26px 34px}
+</style></head><body>
+<div class="themes" id="out"></div>
+<script src="src/icons.js"></script>
+<script src="src/themes.js"></script>
+<script src="src/templates.js"></script>
+<script src="src/fit.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const p = parseFloat(q.get("p") || "6");
+const only = q.get("theme");
+const layoutOverride = q.get("front");
+const backOverride = q.get("back");
+const state = {
+  recipient: q.get("name") || "Sofia",
+  eyebrow: q.get("eyebrow") || "A LITTLE SOMETHING FOR",
+  occasion: "",
+  message: q.get("msg") || "Another year of terrible dance moves and excellent company.\n\nThank you for always being the first to say yes — to the trip, to the second round, to the very bad idea.",
+  sender: "Alex", showSender: true,
+  fontStyle: "elegant", frontLayout: "halo", backLayout: "ruled",
+  density: "balanced", icons: null, accentOverride: "", messageSize: parseFloat(q.get("pt")||"10"),
+  handFont: q.get("hand") === "1", sizeKey: "A"
+};
+const out = document.getElementById('out');
+CardThemes.THEMES.forEach(t => {
+  if (only && t.id !== only) return;
+  const st = Object.assign({}, state, { themeId: t.id, fontStyle: t.fontStyle, frontLayout: layoutOverride || t.frontLayout, backLayout: backOverride || t.backLayout });
+  const d = document.createElement('div');
+  d.innerHTML = `<div class="lab">${t.name} · ${st.frontLayout} / ${st.backLayout}</div>
+    <div class="pair">
+      <div>${CardTemplates.card(st, t, 'front', CardThemes.SIZES.A, {pxPerMm:p})}</div>
+      <div>${CardTemplates.card(st, t, 'back', CardThemes.SIZES.A, {pxPerMm:p})}</div>
+    </div>`;
+  out.appendChild(d);
+});
+const fitAll = () => CardFit.fitCard(document.body);
+requestAnimationFrame(()=>{ fitAll(); requestAnimationFrame(fitAll); });
+document.fonts.ready.then(()=>{ fitAll(); setTimeout(fitAll, 90); });
+</script></body></html>
