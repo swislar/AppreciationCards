@@ -79,6 +79,29 @@ the display name measures **26.00 pt at 300, 600 and 1200 DPI** and occupies
 Gradients stay clean when sampled more finely: in flat areas of the glow field, **100 % of
 neighbouring-pixel steps are ≤ 1 LSB** at all three DPIs (86 % are exactly 0) — no banding.
 
+## Custom palettes survive the export
+
+Recolouring is done in the renderer, not by an overlay, so the colours a user picks are the colours
+in the file. Checked by sampling the exported pixels rather than trusting the DOM:
+
+| Case | Palette | Result |
+|---|---|---|
+| PNG front, 300 DPI | base `#12251C` / ink `#F3ECDD` / accent `#E9B44C` | bleed corner `(92,86,44)`, trim interior `(105,95,47)`, centre `(42,59,51)` — the green base plus the accent glow, 803 × 1122 px |
+| PNG back, 300 DPI | same | uniform `(18,37,28)` = `#12251C` — the base colour reaches every bleed edge |
+| JPEG front, 300 DPI | same | corner `(91,86,44)`, centre `(40,57,49)`; 96 KB |
+| PDF front | same | centre `(40,57,49)`, TrimBox `25.512 25.512 201.260 277.795 pt` = 62 × 89 mm, placed at 68 × 95 mm |
+
+`PRINT-SPEC.txt` inside the ZIP records the palette:
+
+```
+Palette        : custom — base #12251C, ink #F3ECDD, accent #E9B44C, accent 2 #7FD1FF, pop #C8F26B
+```
+
+Regression sweep with a custom palette forced onto every theme (one light, one dark):
+**13 themes × 16 layouts × 2 palettes = 416 renders — 0 clipped blocks, 0 page errors**, smallest
+type 8.3 pt, and the computed `--paper` / `--ink` on every rendered card matched the custom hex on
+all 416 (so no theme silently fell back to its preset).
+
 ## Reproducing
 
 Tools live in [`qa/tools/`](qa/tools). Serve the app (`python3 -m http.server 8899`) and run:
@@ -88,6 +111,7 @@ python3 qa/tools/qa_render.py    # renders 9 representative cases at 300/600/120
 python3 qa/tools/qa_measure.py   # DOM-located crops + edge/energy/ink metrics -> qa/measure.json
 python3 qa/tools/qa_formats.py   # PNG/JPEG/PDF files, effective DPI, PSNR
 python3 qa/tools/qa_sheet.py     # builds qa/asset-quality-proof.png
+python3 qa/tools/qa_palette.py   # 416-render palette sweep + export pixel check (exit 0 = pass)
 ```
 
 ## Verdict

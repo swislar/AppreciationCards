@@ -123,8 +123,12 @@
         </div>
 
         <div class="field">
-          <div class="label">Accent colour</div>
-          <div class="swatches" id="accentSwatches"></div>
+          <div class="label">Colours <span class="hint" id="colorHint">theme palette</span></div>
+          <div class="color-grid" id="colorGrid" role="group" aria-label="Card colours"></div>
+          <div class="color-actions">
+            <button class="btn ghost mini" id="btnFlipColors" type="button" title="Swap the base and ink colours">Flip light / dark</button>
+            <button class="btn ghost mini" id="btnResetColors" type="button" title="Back to the theme's own palette">Theme palette</button>
+          </div>
         </div>
 
         <div class="field">

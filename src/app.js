@@ -22,7 +22,7 @@
     backLayout: "ruled",
     density: "balanced",
     icons: null,            // null = use theme's icon family
-    accentOverride: "",
+    colors: {},              // { paper, ink, accent, accent2, pop } — only what you changed
     messageSize: 10,
     handFont: false,
     sizeKey: "A",
@@ -39,7 +39,13 @@
     try {
       const raw = localStorage.getItem(STORE_KEY);
       if (!raw) return Object.assign({}, DEFAULTS);
-      return Object.assign({}, DEFAULTS, JSON.parse(raw));
+      const saved = Object.assign({}, DEFAULTS, JSON.parse(raw));
+      if (saved.accentOverride) {                     /* migrate v1 saved cards */
+        saved.colors = Object.assign({}, saved.colors, { accent: saved.accentOverride });
+        delete saved.accentOverride;
+      }
+      if (!saved.colors || typeof saved.colors !== "object") saved.colors = {};
+      return saved;
     } catch (e) { return Object.assign({}, DEFAULTS); }
   }
   let saveTimer = null;
@@ -156,7 +162,7 @@
     state.themeId = id;
     const t = theme();
     // carry over a custom accent only if it was untouched
-    state.accentOverride = "";
+    state.colors = {};
     state.icons = null;
     // adopt the new theme's type + layout defaults
     state.fontStyle = t.fontStyle;
@@ -212,30 +218,89 @@
     ], () => state.density, (v) => { state.density = v; render(); });
   }
 
-  /* ---------- accent swatches ---------- */
-  const SWATCHES = ["#FF5C8A", "#D9542B", "#E4572E", "#EF8A7F", "#C8F26B", "#2A9D8F", "#1E8A85", "#7FD1FF", "#2F6F8F", "#5B8DEF", "#E3B463", "#F2C14E", "#A78BFA", "#8B5E3C", "#111A2C"];
-  const accentWrap = document.getElementById("accentSwatches");
+  /* ---------- colours ---------- */
+  const colorGrid = document.getElementById("colorGrid");
+  const colorHint = document.getElementById("colorHint");
 
-  function buildSwatches() {
-    const t = theme();
-    accentWrap.innerHTML = "";
-    const current = state.accentOverride || t.accent;
-    SLOTS.forEach((c) => {
-      const b = el("button", { class: "swatch", type: "button", "aria-pressed": String(sameColor(c, current)), "data-c": c, title: c });
-      b.style.background = c;
-      b.addEventListener("click", () => { state.accentOverride = sameColor(c, theme().accent) ? "" : c; render(); });
-      accentWrap.appendChild(b);
-    });
-    const custom = el("label", { class: "swatch-custom", title: "Custom colour" });
-    custom.innerHTML = `<input type="color" value="${current}" aria-label="Custom accent colour">`;
-    custom.querySelector("input").addEventListener("input", (e) => { state.accentOverride = e.target.value; render(); });
-    accentWrap.appendChild(custom);
+  /** the palette actually on the card right now */
+  const palette = () => window.CardThemes.resolve(theme(), state);
 
-    const reset = el("button", { class: "btn ghost", type: "button", style: "padding:3px 8px;font-size:11.5px" }, "Theme default");
-    reset.addEventListener("click", () => { state.accentOverride = ""; render(); });
-    accentWrap.appendChild(reset);
+  function isCustomPalette() {
+    return Object.keys(state.colors || {}).length > 0;
   }
-  const SLOTS = ["#FF5C8A", "#D9542B", "#E4572E", "#EF8A7F", "#F2C14E", "#E3B463", "#C8F26B", "#2A9D8F", "#1E8A85", "#7FD1FF", "#2F6F8F", "#5B8DEF", "#A78BFA", "#8B5E3C"];
+
+  /* the wells are created once and only *updated* afterwards: rebuilding the
+     DOM on every input event would slam the native colour picker shut */
+  function buildColorWells() {
+    if (!colorGrid || colorGrid.childElementCount) { syncColorWells(); return; }
+    window.CardThemes.COLOR_ROLES.forEach(({ key, label, note }) => {
+      const lab = el("label", { class: "color-well", title: `${label} — ${note}` });
+      const chip = el("span", { class: "cw-chip" });
+      const inp = el("input", { type: "color", "data-role": key, "aria-label": `${label} colour` });
+      inp.addEventListener("input", (e) => setColor(key, e.target.value));
+      const nm = el("span", { class: "cw-name" }, label);
+      lab.append(chip, inp, nm);
+      colorGrid.appendChild(lab);
+    });
+    syncColorWells();
+  }
+
+  function syncColorWells() {
+    if (!colorGrid) return;
+    const pal = palette();
+    colorGrid.querySelectorAll("input[data-role]").forEach((inp) => {
+      const k = inp.dataset.role;
+      if (document.activeElement !== inp) inp.value = pal[k];
+      const chip = inp.parentElement.querySelector(".cw-chip");
+      if (chip) chip.style.background = pal[k];
+    });
+    if (colorHint) colorHint.textContent = isCustomPalette() ? "custom" : "theme palette";
+  }
+
+  function setColor(key, value) {
+    const t = theme();
+    const next = Object.assign({}, state.colors);
+    if (sameColor(value, t[key])) delete next[key];   // back to the preset value
+    else next[key] = value;
+    state.colors = next;
+    render();
+  }
+
+  function resetColors() {
+    state.colors = {};
+    render();
+    toast("Theme palette restored");
+  }
+
+  /* swap base and ink so a light card becomes a dark one and back again */
+  function flipColors() {
+    const pal = palette();
+    const next = { paper: pal.ink, ink: pal.paper };
+    /* icons are line work: nudge any decorative colour that would vanish on
+       the new base, but leave ones that already read fine untouched */
+    ["accent", "accent2", "pop"].forEach((k) => {
+      const c = ensureContrast(pal[k], next.paper, 3);
+      if (!sameColor(c, pal[k])) next[k] = c;
+    });
+    state.colors = Object.assign({}, state.colors, next);
+    render();
+    toast(pal.dark ? "Light card" : "Dark card");
+  }
+
+  function ensureContrast(colour, background, target) {
+    if (window.CardThemes.contrast(colour, background) >= target) return colour;
+    const toward = window.CardThemes.luminance(background) > 0.45 ? "#000000" : "#FFFFFF";
+    for (let i = 1; i <= 24; i++) {
+      const c = window.CardThemes.mix(colour, toward, i / 24);
+      if (window.CardThemes.contrast(c, background) >= target) return c;
+    }
+    return toward;
+  }
+
+  const flipBtn = document.getElementById("btnFlipColors");
+  if (flipBtn) flipBtn.addEventListener("click", flipColors);
+  const resetColorsBtn = document.getElementById("btnResetColors");
+  if (resetColorsBtn) resetColorsBtn.addEventListener("click", resetColors);
 
   function sameColor(a, b) {
     if (!a || !b) return false;
@@ -394,6 +459,13 @@
       600: CardExport.sizeFor(sz, 600),
       1200: CardExport.sizeFor(sz, 1200)
     };
+    /* legibility of the chosen palette, measured the way a designer would */
+    const pal = palette();
+    const cr = window.CardThemes.contrast(pal.ink, pal.paper);
+    out.push({
+      ok: cr >= 4.5, key: "contrast",
+      label: `<b>Ink on base ${cr.toFixed(1)}:1</b> <span>${cr >= 7 ? "AAA — excellent" : cr >= 4.5 ? "AA — fine for print" : "low contrast — darken the ink or lighten the base"}</span>`
+    });
     out.push({
       ok: true, key: "res",
       label: `<b>300+ DPI</b> <span>${px[300].w} × ${px[300].h} px at 300 DPI</span>`
@@ -718,6 +790,9 @@
       `Resolution     : ${dpi} DPI (${px.w} x ${px.h} px)`,
       `File format    : ${isPdf ? "PDF with crop marks (TrimBox + BleedBox)" : (fmt || "png").toUpperCase()}`,
       `Colour profile : sRGB (convert to CMYK if your printer requires it)`,
+      `Palette        : ${isCustomPalette()
+        ? `custom — base ${palette().paper}, ink ${palette().ink}, accent ${palette().accent}, accent 2 ${palette().accent2}, pop ${palette().pop}`
+        : `theme preset "${theme().name}"`}`,
       `Smallest type  : 8 pt minimum`,
       "",
       "ASSEMBLY",
@@ -769,7 +844,7 @@
     document.getElementById("specSize").textContent = size().label;
     document.getElementById("specDpi").textContent = `${curDpi()} DPI export`;
     zoom.value = state.zoom; zoomVal.textContent = state.zoom + "%";
-    buildSwatches();
+    buildColorWells();
     buildIconTray();
   }
 
@@ -781,7 +856,7 @@
     state.fontStyle = pick.fontStyle;
     state.frontLayout = FRONT_LAYOUTS[Math.floor(Math.random() * FRONT_LAYOUTS.length)].id;
     state.backLayout = BACK_LAYOUTS[Math.floor(Math.random() * BACK_LAYOUTS.length)].id;
-    state.accentOverride = "";
+    state.colors = {};
     state.icons = null;
     state.density = ["minimal", "balanced", "rich"][Math.floor(Math.random() * 3)];
     render();

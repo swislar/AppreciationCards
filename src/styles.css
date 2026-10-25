@@ -184,6 +184,24 @@ button{cursor:pointer}
 .swatch-custom{width:26px;height:26px;border-radius:50%;border:1px dashed #C9BDA9;display:grid;place-items:center;background:conic-gradient(from 0deg,#FF5D8F,#FFCE5C,#7FD1FF,#C8F26B,#FF5D8F);position:relative;overflow:hidden}
 .swatch-custom input{position:absolute;inset:-6px;opacity:0;cursor:pointer;width:200%;height:200%}
 
+/* ---------- five-role colour controls ---------- */
+.color-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.color-well{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;min-width:0}
+.cw-chip{
+  display:block;width:100%;aspect-ratio:1.32;border-radius:9px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.16),0 1px 2px rgba(0,0,0,.06);
+  transition:transform .12s;
+}
+.color-well:hover .cw-chip{transform:translateY(-1px)}
+.color-well input[type="color"]{
+  position:absolute;left:0;top:0;width:100%;height:calc(100% - 18px);
+  opacity:0;cursor:pointer;border:0;padding:0;
+}
+.color-well:focus-within .cw-chip{outline:2px solid var(--ui-ink);outline-offset:2px}
+.cw-name{font-size:10px;letter-spacing:.02em;color:#8A8177;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.color-actions{display:flex;gap:7px;margin-top:9px}
+.btn.mini{padding:3px 8px;font-size:11.5px}
+
 /* range */
 .range{display:flex;align-items:center;gap:10px}
 .range input[type=range]{flex:1;accent-color:var(--ui-accent);height:20px}
@@ -552,8 +570,14 @@ button{cursor:pointer}
 .g-bleed,.g-trim,.g-safe{position:absolute;border-radius:1px}
 .g-bleed{
   inset:0;box-sizing:border-box;
-  border:calc(var(--bleed) * var(--p)) solid rgba(255,45,149,.13);
-  outline:1px dashed rgba(255,45,149,.85);outline-offset:-1px;
+  /* hairline hatch instead of a flat magenta wash: a solid tint over the 3 mm
+     ring skewed the very colours the palette editor exists to show accurately */
+  border:calc(var(--bleed) * var(--p)) solid transparent;
+  background:repeating-linear-gradient(45deg, rgba(255,45,149,.4) 0 1px, transparent 1px 6px) border-box;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
 }
 .g-trim{inset:calc(var(--bleed) * var(--p));border:1px solid rgba(0,166,224,.95)}
 .g-safe{inset:calc((var(--bleed) + var(--safe)) * var(--p));border:1px dotted rgba(20,160,94,.9)}

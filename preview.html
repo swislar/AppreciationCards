@@ -21,6 +21,15 @@ const p = parseFloat(q.get("p") || "6");
 const only = q.get("theme");
 const layoutOverride = q.get("front");
 const backOverride = q.get("back");
+/* any of ?paper= ?ink= ?accent= ?accent2= ?pop= as hex (with or without #) */
+function customColors() {
+  const out = {};
+  ["paper","ink","accent","accent2","pop"].forEach(k => {
+    const v = q.get(k);
+    if (v && /^#?[0-9a-f]{6}$/i.test(v)) out[k] = v[0] === "#" ? v : "#" + v;
+  });
+  return out;
+}
 const state = {
   recipient: q.get("name") || "Sofia",
   eyebrow: q.get("eyebrow") || "A LITTLE SOMETHING FOR",
@@ -28,7 +37,7 @@ const state = {
   message: q.get("msg") || "Another year of terrible dance moves and excellent company.\n\nThank you for always being the first to say yes — to the trip, to the second round, to the very bad idea.",
   sender: "Alex", showSender: true,
   fontStyle: "elegant", frontLayout: "halo", backLayout: "ruled",
-  density: "balanced", icons: null, accentOverride: "", messageSize: parseFloat(q.get("pt")||"10"),
+  density: "balanced", icons: null, colors: customColors(), messageSize: parseFloat(q.get("pt")||"10"),
   handFont: q.get("hand") === "1", sizeKey: "A"
 };
 const out = document.getElementById('out');

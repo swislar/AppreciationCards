@@ -557,11 +557,13 @@
     const o = opts || {};
     const sizeDef = size || global.CardThemes.SIZES.A;
     const W = sizeDef.w, H = sizeDef.h;
+    /* fold the user's colour edits into the theme before anything is drawn */
+    const th = global.CardThemes.resolve ? global.CardThemes.resolve(t, state) : t;
     const style = [
       `--cw:${W}`, `--ch:${H}`, `--bleed:${BLEED}`, `--safe:${SAFE}`,
-      `--paper:${t.paper}`, `--paper2:${t.paper2}`, `--ink:${t.ink}`, `--ink-soft:${t.inkSoft}`,
-      `--accent:${state.accentOverride || t.accent}`, `--accent2:${t.accent2}`, `--pop:${t.pop}`,
-      `--on-accent:${t.onAccent}`, `--msg-pt:${state.messageSize}`, `--minpt:${state.messageSize}`,
+      `--paper:${th.paper}`, `--paper2:${th.paper2}`, `--ink:${th.ink}`, `--ink-soft:${th.inkSoft}`,
+      `--accent:${th.accent}`, `--accent2:${th.accent2}`, `--pop:${th.pop}`,
+      `--on-accent:${th.onAccent}`, `--msg-pt:${state.messageSize}`, `--minpt:${state.messageSize}`,
       o.pxPerMm ? `--p:${o.pxPerMm}px` : ""
     ].filter(Boolean).join(";");
 
@@ -574,9 +576,9 @@
         <span class="g-label g-label-trim">TRIM ${W}×${H}mm</span>
       </div>` : "";
 
-    return `<div class="card ${o.guides ? "show-guides" : ""} ${sizeDef.vertical ? "is-vertical" : ""} theme-${t.id} ${global.CardThemes.FONT_STYLES[state.fontStyle].css} ${side} ${t.dark ? "dark" : ""} ${side === "back" && state.handFont ? "back-font-hand" : ""}" data-side="${side}" style="${style}">
+    return `<div class="card ${o.guides ? "show-guides" : ""} ${sizeDef.vertical ? "is-vertical" : ""} theme-${th.id} ${global.CardThemes.FONT_STYLES[state.fontStyle].css} ${side} ${th.dark ? "dark" : ""} ${side === "back" && state.handFont ? "back-font-hand" : ""}" data-side="${side}" style="${style}">
       <div class="bleed-bg"></div>
-      ${side === "front" ? front(state, t, o) : back(state, t, o)}
+      ${side === "front" ? front(state, th, o) : back(state, th, o)}
       ${guides}
     </div>`;
   }

@@ -298,6 +298,68 @@
     }
   ];
 
+  /* ======================================================================
+     COLOUR ENGINE
+     The five palette roles below can be recoloured from the sidebar. Only
+     the roles you actually change are recomputed — paper shadow, soft ink
+     and the colour of text sitting on the accent are derived from them —
+     so an untouched theme looks exactly as designed.
+     ====================================================================== */
+  const COLOR_ROLES = [
+    { key: "paper", label: "Base", note: "the card itself" },
+    { key: "ink", label: "Ink", note: "text and line work" },
+    { key: "accent", label: "Accent", note: "headlines, name outline" },
+    { key: "accent2", label: "Second", note: "rules and details" },
+    { key: "pop", label: "Pop", note: "sparkle highlights" }
+  ];
+
+  const hexToRgb = (hex) => {
+    let h = String(hex || "").trim().replace("#", "");
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    if (!/^[0-9a-f]{6}$/i.test(h)) return { r: 0, g: 0, b: 0 };
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  };
+  const toHex = (c) => "#" + [c.r, c.g, c.b]
+    .map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+
+  function mix(a, b, t) {
+    const A = hexToRgb(a), B = hexToRgb(b);
+    return toHex({ r: A.r + (B.r - A.r) * t, g: A.g + (B.g - A.g) * t, b: A.b + (B.b - A.b) * t });
+  }
+
+  function luminance(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  }
+
+  function contrast(a, b) {
+    const l1 = luminance(a), l2 = luminance(b);
+    const hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /** a copy of the theme with the user's colour edits folded in */
+  function resolve(t, state) {
+    const c = (state && state.colors) || {};
+    const has = (k) => typeof c[k] === "string" && /^#[0-9a-f]{6}$/i.test(c[k]);
+    if (!COLOR_ROLES.some((r) => has(r.key))) return t;
+
+    const out = Object.assign({}, t);
+    COLOR_ROLES.forEach((r) => { if (has(r.key)) out[r.key] = c[r.key]; });
+
+    if (has("paper")) {
+      out.dark = luminance(out.paper) < 0.4;
+      /* the raised surface tone — a touch lighter than the paper in both directions */
+      out.paper2 = mix(out.paper, "#FFFFFF", out.dark ? 0.1 : 0.34);
+    }
+    if (has("ink")) out.inkSoft = mix(out.ink, out.paper, out.dark ? 0.3 : 0.36);
+    if (has("accent") || has("paper")) {
+      out.onAccent = contrast("#FFFFFF", out.accent) >= contrast(out.ink, out.accent) ? "#FFFFFF" : out.ink;
+    }
+    return out;
+  }
+
   const FONT_STYLES = {
     elegant: { label: "Elegant", css: "font-style-elegant", display: "Fraunces", script: "Great Vibes" },
     playful: { label: "Playful", css: "font-style-playful", display: "Baloo 2", script: "Caveat" },
@@ -329,5 +391,9 @@
 
   const BLEED_MM = 3;
 
-  global.CardThemes = { THEMES, FONT_STYLES, FRONT_LAYOUTS, BACK_LAYOUTS, SIZES, BLEED_MM, byId: (id) => THEMES.find(t => t.id === id) || THEMES[0] };
+  global.CardThemes = {
+    THEMES, FONT_STYLES, FRONT_LAYOUTS, BACK_LAYOUTS, SIZES, BLEED_MM, COLOR_ROLES,
+    byId: (id) => THEMES.find((t) => t.id === id) || THEMES[0],
+    resolve, mix, luminance, contrast, hexToRgb
+  };
 })(window);
