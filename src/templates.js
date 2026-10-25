@@ -452,7 +452,12 @@
       : (pv ? "Your message appears here — a memory, a thank you, or a joke only the two of you share." : "");
     const sender = (state.sender || "").trim();
     const recipient = (state.recipient || "").trim();
-    const title = recipient ? `NOTE FOR ${recipient.toUpperCase()}` : (opts.preview ? "A NOTE FOR YOU" : "");
+    let title;
+    if (state.backTitle !== undefined && state.backTitle !== null) {
+      title = state.backTitle;
+    } else {
+      title = recipient ? `NOTE FOR ${recipient.toUpperCase()}` : (opts.preview ? "A NOTE FOR YOU" : "");
+    }
     const ic = (i) => [t.accent, t.accent2, t.pop][i % 3];
     const icons = iconsFor(state, t);
     const msgHtml = esc(msg);

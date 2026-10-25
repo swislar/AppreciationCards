@@ -34,6 +34,7 @@ const state = {
   recipient: q.get("name") || "Sofia",
   eyebrow: q.get("eyebrow") || "A LITTLE SOMETHING FOR",
   occasion: "",
+  backTitle: q.get("backTitle") || q.get("title") || undefined,
   message: q.get("msg") || "Another year of terrible dance moves and excellent company.\n\nThank you for always being the first to say yes — to the trip, to the second round, to the very bad idea.",
   sender: "Alex", showSender: true,
   fontStyle: "elegant", frontLayout: "halo", backLayout: "ruled",

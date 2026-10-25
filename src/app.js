@@ -14,6 +14,7 @@
     recipient: "Sofia",
     eyebrow: "A LITTLE SOMETHING FOR",
     occasion: "",
+    backTitle: "NOTE FOR SOFIA",
     message: "Thank you for always being the first to say yes — to the trip, to the second round, to the very bad idea. Here's to many more.",
     sender: "Alex",
     showSender: true,
@@ -45,6 +46,11 @@
         delete saved.accentOverride;
       }
       if (!saved.colors || typeof saved.colors !== "object") saved.colors = {};
+      if (saved.backTitle === undefined) {
+        saved.backTitle = saved.recipient && saved.recipient.trim()
+          ? `NOTE FOR ${saved.recipient.trim().toUpperCase()}`
+          : "NOTE FOR SOFIA";
+      }
       return saved;
     } catch (e) { return Object.assign({}, DEFAULTS); }
   }
@@ -371,18 +377,43 @@
   const inpRecipient = document.getElementById("inpRecipient");
   const inpEyebrow = document.getElementById("inpEyebrow");
   const inpOccasion = document.getElementById("inpOccasion");
+  const inpBackTitle = document.getElementById("inpBackTitle");
   const inpMessage = document.getElementById("inpMessage");
   const inpSender = document.getElementById("inpSender");
   const msgCounter = document.getElementById("msgCounter");
 
   function bindText(input, key, after) {
+    if (!input) return;
     input.addEventListener("input", () => {
       state[key] = input.value;
       if (after) after(input.value);
       render();
     });
   }
-  bindText(inpRecipient, "recipient");
+  inpRecipient.addEventListener("input", () => {
+    const oldRecipient = state.recipient;
+    state.recipient = inpRecipient.value;
+    const oldExpected = oldRecipient && oldRecipient.trim()
+      ? `NOTE FOR ${oldRecipient.trim().toUpperCase()}`
+      : "NOTE FOR SOFIA";
+    if (!state.backTitleCustomized || state.backTitle === oldExpected || !state.backTitle) {
+      state.backTitle = state.recipient.trim() ? `NOTE FOR ${state.recipient.trim().toUpperCase()}` : "";
+      if (inpBackTitle) inpBackTitle.value = state.backTitle;
+    }
+    if (inpBackTitle) {
+      inpBackTitle.placeholder = state.recipient.trim()
+        ? `NOTE FOR ${state.recipient.trim().toUpperCase()}`
+        : "A NOTE FOR YOU";
+    }
+    render();
+  });
+  if (inpBackTitle) {
+    inpBackTitle.addEventListener("input", () => {
+      state.backTitle = inpBackTitle.value;
+      state.backTitleCustomized = true;
+      render();
+    });
+  }
   bindText(inpEyebrow, "eyebrow");
   bindText(inpOccasion, "occasion");
   bindText(inpSender, "sender");
@@ -445,6 +476,30 @@
     zoomVal.textContent = state.zoom + "%";
     layoutStage();
     CardFit.fitCard(cardsEl);
+  });
+
+  /* click text on card to focus matching input */
+  cardsEl.addEventListener("click", (e) => {
+    const target = e.target.closest(".back-title, .name, .eyebrow, .occasion, .msg, .signature");
+    if (!target) return;
+    if (target.classList.contains("back-title") && inpBackTitle) {
+      inpBackTitle.focus();
+      inpBackTitle.select();
+    } else if (target.classList.contains("name") && inpRecipient) {
+      inpRecipient.focus();
+      inpRecipient.select();
+    } else if (target.classList.contains("eyebrow") && inpEyebrow) {
+      inpEyebrow.focus();
+      inpEyebrow.select();
+    } else if (target.classList.contains("occasion") && inpOccasion) {
+      inpOccasion.focus();
+      inpOccasion.select();
+    } else if (target.classList.contains("msg") && inpMessage) {
+      inpMessage.focus();
+    } else if (target.classList.contains("signature") && inpSender) {
+      inpSender.focus();
+      inpSender.select();
+    }
   });
 
   /* ---------------------------------------------------------------- checks */
@@ -832,6 +887,12 @@
     if (inpRecipient.value !== state.recipient) inpRecipient.value = state.recipient;
     if (inpEyebrow.value !== state.eyebrow) inpEyebrow.value = state.eyebrow;
     if (inpOccasion.value !== state.occasion) inpOccasion.value = state.occasion;
+    if (inpBackTitle) {
+      if (inpBackTitle.value !== (state.backTitle || "")) inpBackTitle.value = state.backTitle || "";
+      inpBackTitle.placeholder = state.recipient && state.recipient.trim()
+        ? `NOTE FOR ${state.recipient.trim().toUpperCase()}`
+        : "A NOTE FOR YOU";
+    }
     if (inpMessage.value !== state.message) inpMessage.value = state.message;
     if (inpSender.value !== state.sender) inpSender.value = state.sender;
     msgCounter.textContent = (state.message || "").length + " chars";
